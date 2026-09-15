@@ -13,7 +13,7 @@ interface MetaApiErrorResponse {
 }
 
 const getMessagingApiUrl = (): string => {
-  return `https://graph.facebook.com/${env.metaApiVersion}/${env.instagramAccountId}/messages`;
+  return `https://graph.instagram.com/${env.metaApiVersion}/${env.instagramAccountId}/messages`;
 };
 
 export const instagramService = {
@@ -30,8 +30,9 @@ export const instagramService = {
           }
         },
         {
-          params: {
-            access_token: env.instagramAccessToken
+          headers: {
+            Authorization: `Bearer ${env.instagramAccessToken}`,
+            "Content-Type": "application/json"
           }
         }
       );
