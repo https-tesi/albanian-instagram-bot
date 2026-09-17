@@ -1,4 +1,8 @@
 import { HandoffReason } from "./conversation.service";
 import { logger } from "../utils/logger";
+import { handoffReasonLabels } from "../constants/handoff-reasons";
+import { WhatsAppCloudApiClient } from "./whatsapp.service";
 export interface BusinessNotificationService { notifyHandoff(input: { instagramUserId: string; reason: HandoffReason; latestMessage?: string; timestamp: Date }): Promise<void>; }
-export class LoggingBusinessNotificationService implements BusinessNotificationService { async notifyHandoff(input: { instagramUserId: string; reason: HandoffReason; latestMessage?: string; timestamp: Date }): Promise<void> { logger.warn("HUMAN HANDOFF REQUIRED", input); } }
+export const formatWhatsappHandoffNotification = (input: { instagramUserId: string; reason: HandoffReason; latestMessage?: string; timestamp: Date }): string => `🔴 Kërkohet ndërhyrje njerëzore\n\nInstagram User ID: ${input.instagramUserId}\nArsyeja: ${handoffReasonLabels[input.reason]}\nMesazhi i fundit: ${input.latestMessage ?? "Nuk u dha"}\nKoha: ${input.timestamp.toISOString().replace("T", " ").slice(0, 16)}\n\nHapni Instagram DM dhe përgjigjuni klientit.`;
+export class LoggingBusinessNotificationService implements BusinessNotificationService { async notifyHandoff(input: { instagramUserId: string; reason: HandoffReason; latestMessage?: string; timestamp: Date }): Promise<void> { logger.warn("HUMAN HANDOFF REQUIRED", { ...input, reason: handoffReasonLabels[input.reason] }); } }
+export class WhatsAppBusinessNotificationService implements BusinessNotificationService { constructor(private readonly client: WhatsAppCloudApiClient, private readonly recipientPhone: string) {} async notifyHandoff(input: { instagramUserId: string; reason: HandoffReason; latestMessage?: string; timestamp: Date }): Promise<void> { await this.client.sendTextMessage(this.recipientPhone, formatWhatsappHandoffNotification(input)); } }

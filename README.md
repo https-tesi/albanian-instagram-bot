@@ -8,7 +8,7 @@ Instagram DM -> Meta webhook -> event parser/deduplication -> conversation guard
 
 Milestone 3 adds an Albanian OpenAI assistant, in-memory duplicate-event protection, daily per-user limits, a monthly spend guard, and human handoff.
 
-When a conversation becomes `HUMAN_REQUIRED`, the bot sends one Albanian handoff message, logs a structured notification for the business, and stays silent afterwards. WhatsApp Business notification delivery is planned for the next milestone; the notification interface is already replaceable.
+When a conversation becomes `HUMAN_REQUIRED`, the bot sends one Albanian handoff message, notifies the business once, and stays silent afterwards. When enabled, notifications use the official Meta WhatsApp Cloud API; no WhatsApp Web automation or QR-login tools are used. A WhatsApp failure is logged safely and never cancels the customer handoff or re-enables AI.
 
 Conversation states are `AI_ACTIVE`, `HUMAN_REQUIRED`, `HUMAN_ACTIVE`, and `RESOLVED`. Handoff reasons include explicit human requests, AI uncertainty, complaints, failed actions, user limits, and business budget limits. Reservation creation, rescheduling, and cancellation are intended to remain automated when the booking integration is added; they are not automatic handoff cases.
 
@@ -51,6 +51,11 @@ MAX_CONVERSATION_HISTORY_MESSAGES=6
 MONTHLY_AI_BUDGET_USD=0
 OPENAI_INPUT_PRICE_PER_MILLION=0
 OPENAI_OUTPUT_PRICE_PER_MILLION=0
+WHATSAPP_ENABLED=false
+WHATSAPP_ACCESS_TOKEN=
+WHATSAPP_PHONE_NUMBER_ID=
+WHATSAPP_RECIPIENT_PHONE=
+WHATSAPP_API_VERSION=
 ```
 
 Never commit access tokens or `.env`.
@@ -99,6 +104,12 @@ External Meta and OpenAI calls are mocked by the test suite.
 Only the current customer message is currently sent to OpenAI, so history is bounded by design. `OPENAI_MAX_OUTPUT_TOKENS` is always enforced. Successful calls log model and token usage when the service exposes it. Configure both per-million price variables and `MONTHLY_AI_BUDGET_USD` to enable an estimated monthly-spend guard; a zero budget means the guard is not configured.
 
 Set `OPENAI_MODEL` to change models. `OPENAI_API_KEY` is required to start the AI-enabled service; all other OpenAI settings have conservative defaults.
+
+## WhatsApp business notifications
+
+Set `WHATSAPP_ENABLED=true` and configure `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, and `WHATSAPP_RECIPIENT_PHONE` to notify the business after an `AI_ACTIVE → HUMAN_REQUIRED` transition. `WHATSAPP_API_VERSION` is optional and otherwise uses `META_API_VERSION`.
+
+`WHATSAPP_RECIPIENT_PHONE` must use the Meta Cloud API international number format: digits only, without `+` or spaces (for example, `3556XXXXXXXX`). This single-business MVP sends all alerts to one configured business number. Multi-tenant versions will store a recipient number per business in the database.
 
 ## Current API Routes
 

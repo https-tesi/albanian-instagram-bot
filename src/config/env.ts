@@ -46,6 +46,20 @@ const parseNonNegativeNumber = (value: string | undefined, fallback: number, key
   return parsed;
 };
 
+const parseBoolean = (value: string | undefined, fallback: boolean, key: string): boolean => {
+  if (!value) return fallback;
+  if (value === "true") return true;
+  if (value === "false") return false;
+  throw new Error(`${key} must be true or false`);
+};
+
+const whatsappEnabled = parseBoolean(process.env.WHATSAPP_ENABLED, false, "WHATSAPP_ENABLED");
+const getWhatsappRequired = (key: "WHATSAPP_ACCESS_TOKEN" | "WHATSAPP_PHONE_NUMBER_ID" | "WHATSAPP_RECIPIENT_PHONE"): string => {
+  const value = process.env[key];
+  if (!value) throw new Error(`Missing required environment variable when WHATSAPP_ENABLED=true: ${key}`);
+  return value;
+};
+
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   port: parsePort(process.env.PORT),
@@ -60,5 +74,10 @@ export const env = {
   maxConversationHistoryMessages: parsePositiveInteger(process.env.MAX_CONVERSATION_HISTORY_MESSAGES, 6, "MAX_CONVERSATION_HISTORY_MESSAGES"),
   monthlyAiBudgetUsd: parseNonNegativeNumber(process.env.MONTHLY_AI_BUDGET_USD, 0, "MONTHLY_AI_BUDGET_USD"),
   openAiInputPricePerMillion: parseNonNegativeNumber(process.env.OPENAI_INPUT_PRICE_PER_MILLION, 0, "OPENAI_INPUT_PRICE_PER_MILLION"),
-  openAiOutputPricePerMillion: parseNonNegativeNumber(process.env.OPENAI_OUTPUT_PRICE_PER_MILLION, 0, "OPENAI_OUTPUT_PRICE_PER_MILLION")
+  openAiOutputPricePerMillion: parseNonNegativeNumber(process.env.OPENAI_OUTPUT_PRICE_PER_MILLION, 0, "OPENAI_OUTPUT_PRICE_PER_MILLION"),
+  whatsappEnabled,
+  whatsappAccessToken: whatsappEnabled ? getWhatsappRequired("WHATSAPP_ACCESS_TOKEN") : undefined,
+  whatsappPhoneNumberId: whatsappEnabled ? getWhatsappRequired("WHATSAPP_PHONE_NUMBER_ID") : undefined,
+  whatsappRecipientPhone: whatsappEnabled ? getWhatsappRequired("WHATSAPP_RECIPIENT_PHONE") : undefined,
+  whatsappApiVersion: process.env.WHATSAPP_API_VERSION ?? getRequiredEnv("META_API_VERSION")
 };

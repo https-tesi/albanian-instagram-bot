@@ -1,6 +1,7 @@
 import { systemMessages } from "../constants/messages";
 import { ConversationRepository, ConversationStatus, HandoffReason } from "./conversation.service";
 import { BusinessNotificationService } from "./notification.service";
+import { logger } from "../utils/logger";
 
 export class HumanHandoffService {
   constructor(private readonly conversations: ConversationRepository, private readonly notifications: BusinessNotificationService, private readonly sendMessage: (userId: string, text: string) => Promise<void>) {}
@@ -11,6 +12,7 @@ export class HumanHandoffService {
     const conversation = { ...existing, latestMessage, lastMessageAt: now, status: ConversationStatus.HUMAN_REQUIRED, handoffReason: reason, handoffAt: now, handoffMessageSent: true };
     await this.conversations.save(conversation);
     await this.sendMessage(userId, systemMessages.humanHandoff);
-    await this.notifications.notifyHandoff({ instagramUserId: userId, reason, latestMessage, timestamp: now });
+    try { await this.notifications.notifyHandoff({ instagramUserId: userId, reason, latestMessage, timestamp: now }); }
+    catch (error) { logger.error("Business handoff notification failed", { message: error instanceof Error ? error.message : "Unknown error", instagramUserId: userId, reason }); }
   }
 }
