@@ -6,7 +6,8 @@ type RequiredEnvVar =
   | "INSTAGRAM_VERIFY_TOKEN"
   | "INSTAGRAM_ACCESS_TOKEN"
   | "INSTAGRAM_ACCOUNT_ID"
-  | "META_API_VERSION";
+  | "META_API_VERSION"
+  | "DATABASE_URL";
 
 const getRequiredEnv = (key: RequiredEnvVar): string => {
   const value = process.env[key];
@@ -75,6 +76,9 @@ export const env = {
   monthlyAiBudgetUsd: parseNonNegativeNumber(process.env.MONTHLY_AI_BUDGET_USD, 0, "MONTHLY_AI_BUDGET_USD"),
   openAiInputPricePerMillion: parseNonNegativeNumber(process.env.OPENAI_INPUT_PRICE_PER_MILLION, 0, "OPENAI_INPUT_PRICE_PER_MILLION"),
   openAiOutputPricePerMillion: parseNonNegativeNumber(process.env.OPENAI_OUTPUT_PRICE_PER_MILLION, 0, "OPENAI_OUTPUT_PRICE_PER_MILLION"),
+  databaseUrl: getRequiredEnv("DATABASE_URL"),
+  humanRequiredTimeoutHours: parsePositiveInteger(process.env.HUMAN_REQUIRED_TIMEOUT_HOURS, 24, "HUMAN_REQUIRED_TIMEOUT_HOURS"),
+  humanActiveTimeoutHours: parsePositiveInteger(process.env.HUMAN_ACTIVE_TIMEOUT_HOURS, 24, "HUMAN_ACTIVE_TIMEOUT_HOURS"),
   whatsappEnabled,
   whatsappAccessToken: whatsappEnabled ? getWhatsappRequired("WHATSAPP_ACCESS_TOKEN") : undefined,
   whatsappPhoneNumberId: whatsappEnabled ? getWhatsappRequired("WHATSAPP_PHONE_NUMBER_ID") : undefined,

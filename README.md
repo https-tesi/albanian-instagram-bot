@@ -8,6 +8,8 @@ Instagram DM -> Meta webhook -> event parser/deduplication -> conversation guard
 
 Milestone 3 adds an Albanian OpenAI assistant, in-memory duplicate-event protection, daily per-user limits, a monthly spend guard, and human handoff.
 
+Conversation state is persisted in PostgreSQL through `DATABASE_URL`, so handoff status survives Railway restarts. Run `npm run migrate` after setting `DATABASE_URL` to create the `conversations` table. `HUMAN_REQUIRED_TIMEOUT_HOURS` and `HUMAN_ACTIVE_TIMEOUT_HOURS` use elapsed hours (not calendar-day boundaries). An expired unresolved handoff sends one soft Albanian re-entry message on the next customer message; an expired active-human conversation resumes AI normally. Manual staff-reply webhook detection still requires verification against real Meta payloads; `ConversationService.markHumanActive` is ready for that integration.
+
 When a conversation becomes `HUMAN_REQUIRED`, the bot sends one Albanian handoff message, notifies the business once, and stays silent afterwards. When enabled, notifications use the official Meta WhatsApp Cloud API; no WhatsApp Web automation or QR-login tools are used. A WhatsApp failure is logged safely and never cancels the customer handoff or re-enables AI.
 
 Conversation states are `AI_ACTIVE`, `HUMAN_REQUIRED`, `HUMAN_ACTIVE`, and `RESOLVED`. Handoff reasons include explicit human requests, AI uncertainty, complaints, failed actions, user limits, and business budget limits. Reservation creation, rescheduling, and cancellation are intended to remain automated when the booking integration is added; they are not automatic handoff cases.
@@ -43,6 +45,9 @@ INSTAGRAM_VERIFY_TOKEN=change_me
 INSTAGRAM_ACCESS_TOKEN=
 INSTAGRAM_ACCOUNT_ID=
 META_API_VERSION=
+DATABASE_URL=
+HUMAN_REQUIRED_TIMEOUT_HOURS=24
+HUMAN_ACTIVE_TIMEOUT_HOURS=24
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-4o-mini
 OPENAI_MAX_OUTPUT_TOKENS=250
@@ -98,6 +103,14 @@ npm test
 ```
 
 External Meta and OpenAI calls are mocked by the test suite.
+
+## Database migration
+
+Provision PostgreSQL, add its `DATABASE_URL`, then run:
+
+```bash
+npm run migrate
+```
 
 ## Cost and history controls
 

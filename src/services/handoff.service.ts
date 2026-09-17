@@ -9,7 +9,7 @@ export class HumanHandoffService {
     const existing = await this.conversations.get(userId);
     if (existing.status === ConversationStatus.HUMAN_REQUIRED || existing.status === ConversationStatus.HUMAN_ACTIVE) return;
     const now = new Date();
-    const conversation = { ...existing, latestMessage, lastMessageAt: now, status: ConversationStatus.HUMAN_REQUIRED, handoffReason: reason, handoffAt: now, handoffMessageSent: true };
+    const conversation = { ...existing, latestMessage, lastCustomerMessageAt: now, status: ConversationStatus.HUMAN_REQUIRED, handoffReason: reason, handoffAt: now, aiReentryOfferedAt: undefined, updatedAt: now };
     await this.conversations.save(conversation);
     await this.sendMessage(userId, systemMessages.humanHandoff);
     try { await this.notifications.notifyHandoff({ instagramUserId: userId, reason, latestMessage, timestamp: now }); }

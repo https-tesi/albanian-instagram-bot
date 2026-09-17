@@ -34,13 +34,30 @@ export const isExplicitHumanRequest = (text: string): boolean => {
   return humanRequestPatterns.some((pattern) => pattern.test(normalizedText));
 };
 export class ConversationFlowService {
-  constructor(private readonly conversations: ConversationRepository, private readonly events: EventDeduplicationService, private readonly rateLimits: UserRateLimitService, private readonly usage: UsageService, private readonly ai: OpenAiService, private readonly handoff: HumanHandoffService, private readonly sendMessage: (userId: string, text: string) => Promise<void>) {}
+  constructor(private readonly conversations: ConversationRepository, private readonly events: EventDeduplicationService, private readonly rateLimits: UserRateLimitService, private readonly usage: UsageService, private readonly ai: OpenAiService, private readonly handoff: HumanHandoffService, private readonly sendMessage: (userId: string, text: string) => Promise<void>, private readonly humanRequiredTimeoutHours = 24, private readonly humanActiveTimeoutHours = 24) {}
   async process(message: IncomingInstagramTextMessage): Promise<void> {
     if (message.messageId && !this.events.claim(message.messageId)) { logger.info("Ignoring duplicate Instagram event", { messageId: message.messageId }); return; }
     const conversation = await this.conversations.get(message.senderId);
-    if (conversation.status === ConversationStatus.HUMAN_REQUIRED || conversation.status === ConversationStatus.HUMAN_ACTIVE) return;
-    await this.conversations.save({ ...conversation, latestMessage: message.text, lastMessageAt: new Date() });
-    if (isExplicitHumanRequest(message.text)) { await this.handoff.handoff(message.senderId, HandoffReason.HUMAN_REQUESTED, message.text); return; }
+    const now = new Date();
+    const isHumanRequested = isExplicitHumanRequest(message.text);
+    const previousInteraction = conversation.lastHumanMessageAt ?? conversation.lastCustomerMessageAt;
+    const hasElapsed = (date: Date | undefined, hours: number): boolean => Boolean(date && now.getTime() - date.getTime() >= hours * 60 * 60 * 1000);
+    if (conversation.status === ConversationStatus.HUMAN_REQUIRED) {
+      await this.conversations.save({ ...conversation, latestMessage: message.text, lastCustomerMessageAt: now, updatedAt: now });
+      if (isHumanRequested) return;
+      if (!conversation.aiReentryOfferedAt && hasElapsed(conversation.handoffAt, this.humanRequiredTimeoutHours)) {
+        await this.conversations.save({ ...conversation, status: ConversationStatus.AI_ACTIVE, latestMessage: message.text, lastCustomerMessageAt: now, aiReentryOfferedAt: now, updatedAt: now });
+        await this.sendMessage(message.senderId, systemMessages.aiReentry);
+      }
+      return;
+    }
+    if (conversation.status === ConversationStatus.HUMAN_ACTIVE && !hasElapsed(previousInteraction, this.humanActiveTimeoutHours)) {
+      await this.conversations.save({ ...conversation, latestMessage: message.text, lastCustomerMessageAt: now, updatedAt: now });
+      return;
+    }
+    const activeConversation = conversation.status === ConversationStatus.HUMAN_ACTIVE || conversation.status === ConversationStatus.RESOLVED ? { ...conversation, status: ConversationStatus.AI_ACTIVE } : conversation;
+    await this.conversations.save({ ...activeConversation, latestMessage: message.text, lastCustomerMessageAt: now, updatedAt: now });
+    if (isHumanRequested) { await this.handoff.handoff(message.senderId, HandoffReason.HUMAN_REQUESTED, message.text); return; }
     if (!this.rateLimits.canUse(message.senderId)) { await this.handoff.handoff(message.senderId, HandoffReason.USER_RATE_LIMIT, message.text); return; }
     if (!this.usage.canSpend()) { await this.handoff.handoff(message.senderId, HandoffReason.BUSINESS_BUDGET_LIMIT, message.text); return; }
     try { const result = await this.ai.reply(message.text); this.rateLimits.record(message.senderId); if (result.usage) this.usage.record(result.usage); if (result.requiresHuman) { await this.handoff.handoff(message.senderId, result.handoffReason ? HandoffReason[result.handoffReason] : HandoffReason.AI_UNCERTAIN, message.text); return; } if (result.replyText) await this.sendMessage(message.senderId, result.replyText); }

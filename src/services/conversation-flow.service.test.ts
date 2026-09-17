@@ -4,13 +4,13 @@ import { InMemoryConversationRepository, ConversationStatus, HandoffReason } fro
 import { InMemoryEventDeduplicationService } from "./event-deduplication.service";
 import { HumanHandoffService } from "./handoff.service";
 
-const build = (options?: { status?: ConversationStatus; rateAllowed?: boolean; budgetAllowed?: boolean; aiFails?: boolean }) => {
+const build = (options?: { status?: ConversationStatus; rateAllowed?: boolean; budgetAllowed?: boolean; aiFails?: boolean; humanRequiredTimeoutHours?: number; humanActiveTimeoutHours?: number }) => {
   const conversations = new InMemoryConversationRepository();
   const send = vi.fn(async () => undefined);
   const notify = { notifyHandoff: vi.fn(async () => undefined) };
   const handoff = new HumanHandoffService(conversations, notify, send);
   const ai = { reply: vi.fn(async () => { if (options?.aiFails) throw new Error("temporary failure"); return { replyText: "Përshëndetje!", requiresHuman: false }; }) };
-  const flow = new ConversationFlowService(conversations, new InMemoryEventDeduplicationService(), { canUse: vi.fn(() => options?.rateAllowed ?? true), record: vi.fn() }, { canSpend: vi.fn(() => options?.budgetAllowed ?? true), record: vi.fn() }, ai, handoff, send);
+  const flow = new ConversationFlowService(conversations, new InMemoryEventDeduplicationService(), { canUse: vi.fn(() => options?.rateAllowed ?? true), record: vi.fn() }, { canSpend: vi.fn(() => options?.budgetAllowed ?? true), record: vi.fn() }, ai, handoff, send, options?.humanRequiredTimeoutHours, options?.humanActiveTimeoutHours);
   return { conversations, send, notify, ai, flow };
 };
 describe("ConversationFlowService", () => {
@@ -24,4 +24,6 @@ describe("ConversationFlowService", () => {
   it.each(["do doja te flisja me nje person", "dua të flas me dikë", "mund te flas me stafin", "me lidh me nje person", "operator", "talk to a human"])("recognises the human request %s", (text) => { expect(isExplicitHumanRequest(text)).toBe(true); });
   it.each(["A ka ndonjë person që punon sot?", "Ky person më ndihmoi dje.", "Personi përgjegjës është shumë i sjellshëm."])("does not hand off ordinary person references: %s", (text) => { expect(isExplicitHumanRequest(text)).toBe(false); });
   it("normalizes Albanian diacritics and repeated whitespace", () => { expect(normalizeIntentText("  DUA   TË  FLAS  ME NJË PERSON ")).toBe("dua te flas me nje person"); });
+  it("updates a HUMAN_REQUIRED conversation silently before timeout", async () => { const x = build(); await x.conversations.save({ instagramUserId: "u1", status: ConversationStatus.HUMAN_REQUIRED, handoffAt: new Date() }); await x.flow.process({ senderId: "u1", text: "A jeni hapur?" }); expect(x.ai.reply).not.toHaveBeenCalled(); expect((await x.conversations.get("u1")).lastCustomerMessageAt).toBeInstanceOf(Date); });
+  it("offers soft re-entry once after an expired HUMAN_REQUIRED handoff", async () => { const x = build({ humanRequiredTimeoutHours: 1 }); await x.conversations.save({ instagramUserId: "u1", status: ConversationStatus.HUMAN_REQUIRED, handoffAt: new Date(Date.now() - 2 * 3600_000) }); await x.flow.process({ senderId: "u1", text: "A jeni hapur?" }); expect(x.ai.reply).not.toHaveBeenCalled(); expect(x.send).toHaveBeenCalledOnce(); expect((await x.conversations.get("u1")).status).toBe(ConversationStatus.AI_ACTIVE); });
 });
