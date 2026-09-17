@@ -8,7 +8,31 @@ import { UsageService } from "./usage.service";
 import { IncomingInstagramTextMessage } from "../types/instagram.types";
 import { logger } from "../utils/logger";
 
-export const isExplicitHumanRequest = (text: string): boolean => /dua të flas me (dikë|një person)|mund të flas me stafin|\boperator\b|\bhuman\b|person real/i.test(text.toLocaleLowerCase("sq"));
+/** Normalizes user text for small, deterministic intent rules; it is not used for AI prompts. */
+export const normalizeIntentText = (text: string): string => {
+  return text
+    .toLocaleLowerCase("sq")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .replace(/\s+/g, " ");
+};
+
+const humanRequestPatterns: readonly RegExp[] = [
+  /\b(?:dua|mund) te flas me (?:nje person|dike|stafin|njeri)\b/,
+  /\bdo doja te flisja me (?:nje person|dike|stafin|njeri)\b/,
+  /\bme lidh me (?:nje person|stafin|njeri)\b/,
+  /\bdua ndihme nga nje person\b/,
+  /\bdua operator\b/,
+  /\btalk to a human\b/,
+  /\bspeak to a person\b/,
+  /^(?:human|operator|agent)[.!?]*$/
+];
+
+export const isExplicitHumanRequest = (text: string): boolean => {
+  const normalizedText = normalizeIntentText(text);
+  return humanRequestPatterns.some((pattern) => pattern.test(normalizedText));
+};
 export class ConversationFlowService {
   constructor(private readonly conversations: ConversationRepository, private readonly events: EventDeduplicationService, private readonly rateLimits: UserRateLimitService, private readonly usage: UsageService, private readonly ai: OpenAiService, private readonly handoff: HumanHandoffService, private readonly sendMessage: (userId: string, text: string) => Promise<void>) {}
   async process(message: IncomingInstagramTextMessage): Promise<void> {

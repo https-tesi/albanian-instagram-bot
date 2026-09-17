@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ConversationFlowService, isExplicitHumanRequest } from "./conversation-flow.service";
+import { ConversationFlowService, isExplicitHumanRequest, normalizeIntentText } from "./conversation-flow.service";
 import { InMemoryConversationRepository, ConversationStatus, HandoffReason } from "./conversation.service";
 import { InMemoryEventDeduplicationService } from "./event-deduplication.service";
 import { HumanHandoffService } from "./handoff.service";
@@ -21,5 +21,7 @@ describe("ConversationFlowService", () => {
   it("hands off users beyond the daily limit", async () => { const x = build({ rateAllowed: false }); await x.flow.process({ senderId: "u1", messageId: "m1", text: "hi" }); expect((await x.conversations.get("u1")).handoffReason).toBe(HandoffReason.USER_RATE_LIMIT); });
   it("hands off when the monthly guard is reached", async () => { const x = build({ budgetAllowed: false }); await x.flow.process({ senderId: "u1", messageId: "m1", text: "hi" }); expect((await x.conversations.get("u1")).handoffReason).toBe(HandoffReason.BUSINESS_BUDGET_LIMIT); });
   it("uses the unavailable fallback after OpenAI failure", async () => { const x = build({ aiFails: true }); await x.flow.process({ senderId: "u1", messageId: "m1", text: "hi" }); expect(x.send).toHaveBeenCalledWith("u1", expect.stringContaining("nuk është i disponueshëm")); });
-  it("recognises stated human intent", () => { expect(isExplicitHumanRequest("person real")).toBe(true); });
+  it.each(["do doja te flisja me nje person", "dua të flas me dikë", "mund te flas me stafin", "me lidh me nje person", "operator", "talk to a human"])("recognises the human request %s", (text) => { expect(isExplicitHumanRequest(text)).toBe(true); });
+  it.each(["A ka ndonjë person që punon sot?", "Ky person më ndihmoi dje.", "Personi përgjegjës është shumë i sjellshëm."])("does not hand off ordinary person references: %s", (text) => { expect(isExplicitHumanRequest(text)).toBe(false); });
+  it("normalizes Albanian diacritics and repeated whitespace", () => { expect(normalizeIntentText("  DUA   TË  FLAS  ME NJË PERSON ")).toBe("dua te flas me nje person"); });
 });
