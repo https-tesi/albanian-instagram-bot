@@ -4,9 +4,13 @@ AI-powered Instagram assistant for Albanian businesses, initially focused on sal
 
 ## Current Milestone
 
-Instagram DM -> Meta webhook -> Node.js backend -> automatic response
+Instagram DM -> Meta webhook -> event parser/deduplication -> conversation guard -> OpenAI -> Instagram response
 
-This milestone includes the backend foundation, environment validation, health checks, and Instagram webhook verification/message handling.
+Milestone 3 adds an Albanian OpenAI assistant, in-memory duplicate-event protection, daily per-user limits, a monthly spend guard, and human handoff.
+
+When a conversation becomes `HUMAN_REQUIRED`, the bot sends one Albanian handoff message, logs a structured notification for the business, and stays silent afterwards. WhatsApp Business notification delivery is planned for the next milestone; the notification interface is already replaceable.
+
+Conversation states are `AI_ACTIVE`, `HUMAN_REQUIRED`, `HUMAN_ACTIVE`, and `RESOLVED`. Handoff reasons include explicit human requests, AI uncertainty, complaints, failed actions, user limits, and business budget limits. Reservation creation, rescheduling, and cancellation are intended to remain automated when the booking integration is added; they are not automatic handoff cases.
 
 ## Future Architecture
 
@@ -39,6 +43,14 @@ INSTAGRAM_VERIFY_TOKEN=change_me
 INSTAGRAM_ACCESS_TOKEN=
 INSTAGRAM_ACCOUNT_ID=
 META_API_VERSION=
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4o-mini
+OPENAI_MAX_OUTPUT_TOKENS=250
+MAX_AI_MESSAGES_PER_USER_PER_DAY=30
+MAX_CONVERSATION_HISTORY_MESSAGES=6
+MONTHLY_AI_BUDGET_USD=0
+OPENAI_INPUT_PRICE_PER_MILLION=0
+OPENAI_OUTPUT_PRICE_PER_MILLION=0
 ```
 
 Never commit access tokens or `.env`.
@@ -73,6 +85,20 @@ npm run lint
 ```bash
 npm run format
 ```
+
+## Tests
+
+```bash
+npm test
+```
+
+External Meta and OpenAI calls are mocked by the test suite.
+
+## Cost and history controls
+
+Only the current customer message is currently sent to OpenAI, so history is bounded by design. `OPENAI_MAX_OUTPUT_TOKENS` is always enforced. Successful calls log model and token usage when the service exposes it. Configure both per-million price variables and `MONTHLY_AI_BUDGET_USD` to enable an estimated monthly-spend guard; a zero budget means the guard is not configured.
+
+Set `OPENAI_MODEL` to change models. `OPENAI_API_KEY` is required to start the AI-enabled service; all other OpenAI settings have conservative defaults.
 
 ## Current API Routes
 

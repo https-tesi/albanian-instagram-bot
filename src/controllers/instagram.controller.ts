@@ -1,50 +1,13 @@
 import { Request, Response } from "express";
 
 import { env } from "../config/env";
-import { instagramService } from "../services/instagram.service";
-import {
-  IncomingInstagramTextMessage,
-  InstagramMessagingEvent,
-  InstagramWebhookPayload
-} from "../types/instagram.types";
+import { chatbotService } from "../services/chatbot.service";
+import { InstagramWebhookPayload } from "../types/instagram.types";
+import { extractTextMessages } from "../services/instagram-webhook-parser.service";
 import { logger } from "../utils/logger";
 
 const isObject = (value: unknown): value is Record<string, unknown> => {
   return typeof value === "object" && value !== null;
-};
-
-const extractTextMessages = (payload: InstagramWebhookPayload): IncomingInstagramTextMessage[] => {
-  const messages: IncomingInstagramTextMessage[] = [];
-
-  for (const entry of payload.entry ?? []) {
-    for (const event of entry.messaging ?? []) {
-      const textMessage = extractTextMessage(event);
-
-      if (textMessage) {
-        messages.push(textMessage);
-      }
-    }
-  }
-
-  return messages;
-};
-
-const extractTextMessage = (
-  event: InstagramMessagingEvent
-): IncomingInstagramTextMessage | null => {
-  const senderId = event.sender?.id;
-  const messageId = event.message?.mid;
-  const text = event.message?.text;
-
-  if (!senderId || !messageId || !text || event.message?.is_echo) {
-    return null;
-  }
-
-  return {
-    senderId,
-    messageId,
-    text
-  };
 };
 
 export const instagramController = {
@@ -92,10 +55,7 @@ export const instagramController = {
           messageId: message.messageId
         });
 
-        await instagramService.sendTextMessage(
-          message.senderId,
-          `Pershendetje! Mesazhi juaj ishte: "${message.text}"`
-        );
+        await chatbotService.process(message);
       })
     ).catch((error: unknown) => {
       logger.error("Instagram webhook processing failed after acknowledgement", {

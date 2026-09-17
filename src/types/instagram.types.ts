@@ -28,6 +28,6 @@ export interface InstagramMessage {
 
 export interface IncomingInstagramTextMessage {
   senderId: string;
-  messageId: string;
+  messageId?: string;
   text: string;
 }
