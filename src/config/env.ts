@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import { parsePositiveFiniteNumber } from "./env-parsers";
 
 dotenv.config();
 
@@ -77,8 +78,8 @@ export const env = {
   openAiInputPricePerMillion: parseNonNegativeNumber(process.env.OPENAI_INPUT_PRICE_PER_MILLION, 0, "OPENAI_INPUT_PRICE_PER_MILLION"),
   openAiOutputPricePerMillion: parseNonNegativeNumber(process.env.OPENAI_OUTPUT_PRICE_PER_MILLION, 0, "OPENAI_OUTPUT_PRICE_PER_MILLION"),
   databaseUrl: getRequiredEnv("DATABASE_URL"),
-  humanRequiredTimeoutHours: parsePositiveInteger(process.env.HUMAN_REQUIRED_TIMEOUT_HOURS, 24, "HUMAN_REQUIRED_TIMEOUT_HOURS"),
-  humanActiveTimeoutHours: parsePositiveInteger(process.env.HUMAN_ACTIVE_TIMEOUT_HOURS, 24, "HUMAN_ACTIVE_TIMEOUT_HOURS"),
+  humanRequiredTimeoutHours: parsePositiveFiniteNumber(process.env.HUMAN_REQUIRED_TIMEOUT_HOURS, 24, "HUMAN_REQUIRED_TIMEOUT_HOURS"),
+  humanActiveTimeoutHours: parsePositiveFiniteNumber(process.env.HUMAN_ACTIVE_TIMEOUT_HOURS, 24, "HUMAN_ACTIVE_TIMEOUT_HOURS"),
   whatsappEnabled,
   whatsappAccessToken: whatsappEnabled ? getWhatsappRequired("WHATSAPP_ACCESS_TOKEN") : undefined,
   whatsappPhoneNumberId: whatsappEnabled ? getWhatsappRequired("WHATSAPP_PHONE_NUMBER_ID") : undefined,
