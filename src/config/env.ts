@@ -5,6 +5,7 @@ dotenv.config();
 
 type RequiredEnvVar =
   | "INSTAGRAM_VERIFY_TOKEN"
+  | "META_APP_SECRET"
   | "INSTAGRAM_ACCESS_TOKEN"
   | "INSTAGRAM_ACCOUNT_ID"
   | "META_API_VERSION"
@@ -66,6 +67,7 @@ export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   port: parsePort(process.env.PORT),
   instagramVerifyToken: getRequiredEnv("INSTAGRAM_VERIFY_TOKEN"),
+  metaAppSecret: getRequiredEnv("META_APP_SECRET"),
   instagramAccessToken: getRequiredEnv("INSTAGRAM_ACCESS_TOKEN"),
   instagramAccountId: getRequiredEnv("INSTAGRAM_ACCOUNT_ID"),
   metaApiVersion: getRequiredEnv("META_API_VERSION"),

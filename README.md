@@ -42,6 +42,7 @@ Copy `.env.example` to `.env` and fill in the Instagram/Meta values.
 ```bash
 PORT=3000
 INSTAGRAM_VERIFY_TOKEN=change_me
+META_APP_SECRET=
 INSTAGRAM_ACCESS_TOKEN=
 INSTAGRAM_ACCOUNT_ID=
 META_API_VERSION=
@@ -64,6 +65,10 @@ WHATSAPP_API_VERSION=
 ```
 
 Never commit access tokens or `.env`.
+
+`META_APP_SECRET` is the Meta app secret used to verify `X-Hub-Signature-256` on every Instagram
+webhook POST. It is separate from `INSTAGRAM_VERIFY_TOKEN`; set it as a Railway service variable and
+in your local `.env`, but never commit, log, or share its value.
 
 ## Development
 

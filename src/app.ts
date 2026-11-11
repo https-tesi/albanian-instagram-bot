@@ -6,7 +6,9 @@ import { logger } from "./utils/logger";
 
 export const app = express();
 
-app.use(express.json());
+const captureRawBody = (req: express.Request, _res: express.Response, buffer: Buffer): void => {
+  req.rawBody = Buffer.from(buffer);
+};
 
 app.get("/health", (_req, res) => {
   res.json({
@@ -87,7 +89,8 @@ app.get("/data-deletion", (_req, res) => {
 });
 
 app.use("/api", apiRouter);
-app.use("/webhook/instagram", instagramRouter);
+app.use("/webhook/instagram", express.json({ verify: captureRawBody }), instagramRouter);
+app.use(express.json());
 
 app.use((_req, res) => {
   res.status(404).json({
