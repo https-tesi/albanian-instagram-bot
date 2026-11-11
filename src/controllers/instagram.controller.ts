@@ -5,7 +5,10 @@ import { chatbotService } from "../services/chatbot.service";
 import { InstagramWebhookPayload } from "../types/instagram.types";
 import { extractTextMessages } from "../services/instagram-webhook-parser.service";
 import { logger } from "../utils/logger";
-import { isValidMetaWebhookSignature } from "../services/meta-webhook-signature.service";
+import {
+  MetaWebhookSignatureValidationResult,
+  validateMetaWebhookSignature
+} from "../services/meta-webhook-signature.service";
 
 const isObject = (value: unknown): value is Record<string, unknown> => {
   return typeof value === "object" && value !== null;
@@ -30,14 +33,16 @@ export const instagramController = {
   },
 
   receiveWebhook(req: Request, res: Response): void {
-    if (
-      !isValidMetaWebhookSignature(
-        req.rawBody,
-        req.get("X-Hub-Signature-256"),
-        env.metaAppSecret
-      )
-    ) {
-      logger.warn("Rejected Instagram webhook with invalid signature");
+    const signatureValidation = validateMetaWebhookSignature(
+      req.rawBody,
+      req.get("X-Hub-Signature-256"),
+      env.metaAppSecret
+    );
+
+    if (signatureValidation !== MetaWebhookSignatureValidationResult.VALID) {
+      logger.warn("Rejected Instagram webhook with invalid signature", {
+        reason: signatureValidation
+      });
       res.sendStatus(401);
       return;
     }

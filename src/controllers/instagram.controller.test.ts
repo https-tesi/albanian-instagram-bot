@@ -82,4 +82,16 @@ describe("Instagram webhook signature verification", () => {
     expect(res.sendStatus).toHaveBeenCalledWith(401);
     expect(chatbotService.process).not.toHaveBeenCalled();
   });
+
+  it("rejects a request without a captured raw body before processing messages", () => {
+    const body = Buffer.from('{"object":"instagram","entry":[]}');
+    const req = webhookRequest(body, sign(body));
+    delete req.rawBody;
+    const res = response();
+
+    instagramController.receiveWebhook(req, res);
+
+    expect(res.sendStatus).toHaveBeenCalledWith(401);
+    expect(chatbotService.process).not.toHaveBeenCalled();
+  });
 });

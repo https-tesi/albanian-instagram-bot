@@ -1,7 +1,11 @@
 import { createHmac } from "crypto";
 import { describe, expect, it } from "vitest";
 
-import { isValidMetaWebhookSignature } from "./meta-webhook-signature.service";
+import {
+  isValidMetaWebhookSignature,
+  MetaWebhookSignatureValidationResult,
+  validateMetaWebhookSignature
+} from "./meta-webhook-signature.service";
 
 const appSecret = "test-meta-app-secret";
 const sign = (body: Buffer): string =>
@@ -25,6 +29,9 @@ describe("isValidMetaWebhookSignature", () => {
     const body = Buffer.from('{"object":"instagram","entry":[]}');
 
     expect(isValidMetaWebhookSignature(body, undefined, appSecret)).toBe(false);
+    expect(validateMetaWebhookSignature(body, undefined, appSecret)).toBe(
+      MetaWebhookSignatureValidationResult.MISSING_SIGNATURE
+    );
   });
 
   it("uses the original raw bytes rather than re-serialized JSON", () => {
@@ -34,5 +41,19 @@ describe("isValidMetaWebhookSignature", () => {
 
     expect(isValidMetaWebhookSignature(signedBody, signature, appSecret)).toBe(true);
     expect(isValidMetaWebhookSignature(reserializedBody, signature, appSecret)).toBe(false);
+  });
+
+  it("reports safe diagnostic categories without returning signature data", () => {
+    const body = Buffer.from('{"object":"instagram","entry":[]}');
+
+    expect(validateMetaWebhookSignature(undefined, sign(body), appSecret)).toBe(
+      MetaWebhookSignatureValidationResult.MISSING_RAW_BODY
+    );
+    expect(validateMetaWebhookSignature(body, "not-a-meta-signature", appSecret)).toBe(
+      MetaWebhookSignatureValidationResult.MALFORMED_SIGNATURE
+    );
+    expect(validateMetaWebhookSignature(body, `${sign(body).slice(0, -1)}0`, appSecret)).toBe(
+      MetaWebhookSignatureValidationResult.SIGNATURE_MISMATCH
+    );
   });
 });
